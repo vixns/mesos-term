@@ -20,6 +20,7 @@ export interface EnvVars {
   SUPER_ADMINS: string[];
   MESOS_PRINCIPAL: string;
   MESOS_SECRET_FILE: string;
+  CA_FILE: string;
 }
 
 const authorizations_enabled = (process.env['LDAP_URL']) ? true : false;
@@ -34,6 +35,7 @@ function getSuperAdmins() {
 export const env: EnvVars = {
   SESSION_SECRET: getOrExit('SESSION_SECRET'),
   JWT_SECRET: getOrExit('JWT_SECRET'),
+  CA_FILE: process.env['CA_FILE'],
   SUPER_ADMINS: getSuperAdmins(),
   MESOS_MASTER_URL: getOrExit('MESOS_MASTER_URL'),
   MESOS_PRINCIPAL: process.env['MESOS_PRINCIPAL'],
