@@ -91,6 +91,8 @@ Here are the details of available options.
 | MESOS\_STATE\_CACHE\_TIME | Time in seconds before invalidating the cache containing Mesos state.                    |
 | NODE\_ENV                 | Must be "production" for express to run in production mode.                              |
 | SESSION\_SECRET           | Secret used to encrypt session cookie.                                                   |
+| MESOS\_PRINCIPAL          | Mesos authentication principal.                                                          |
+| MESOS\_SECRET\_FILE       | File containing the mesos authentication secret key.                                     |
 
 ## Authorizations model
 
