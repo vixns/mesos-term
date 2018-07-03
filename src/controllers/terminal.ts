@@ -104,6 +104,13 @@ function spawnTerminal(
     params.push(task.user);
   }
 
+  if (env.MESOS_PRINCIPAL) {
+    params.push('--mesos_principal');
+    params.push(env.MESOS_PRINCIPAL);
+    params.push('--mesos_secret_file');
+    params.push(env.MESOS_SECRET_FILE);
+  }
+
   const options: NodePty.IPtyForkOptions = {
     name: 'bash'
   };

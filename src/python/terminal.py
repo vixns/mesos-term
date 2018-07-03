@@ -12,7 +12,7 @@ import urllib.parse
 from functools import partial
 from queue import Queue
 
-from mesos.errors import MesosException
+from mesos.errors import MesosException,MesosHTTPException
 from mesos import http
 from mesos import recordio
 from mesos import util
@@ -44,8 +44,9 @@ class TaskIO(object):
     HEARTBEAT_INTERVAL = 30
     HEARTBEAT_INTERVAL_NANOSECONDS = HEARTBEAT_INTERVAL * 1000000000
 
-    def __init__(self, agent_url, parent_container_id, user=None, cmd=None,
-                 args=None, interactive=False, tty=False):
+    def __init__(self, agent_url, parent_container_id, user=None,
+                 mesos_principal=None, mesos_secret_file=None,
+                 cmd=None, args=None, interactive=False, tty=False):
         # Store relevant parameters of the call for later.
         self.cmd = cmd
         self.interactive = interactive
@@ -58,6 +59,13 @@ class TaskIO(object):
         # Grab a reference to the container ID for the task.
         self.parent_id = parent_container_id
         self.user = user
+
+        self.mesos_principal = mesos_principal
+        self.mesos_secret_file = mesos_secret_file
+
+        if mesos_secret_file is not None :
+            with open(mesos_secret_file, 'r') as f:
+                self.mesos_secret = f.readline().rstrip()
 
         # Generate a new UUID for the nested container
         # used to run commands passed to `task exec`.
@@ -211,6 +219,11 @@ class TaskIO(object):
         thread.daemon = True
         thread.start()
 
+    def _get_auth(self):
+        if self.mesos_principal is not None:
+            return (self.mesos_principal , self.mesos_secret )
+        return None
+
     def _launch_nested_container_session(self):
         """Sends a request to the Mesos Agent to launch a new
         nested container and attach to its output stream.
@@ -249,6 +262,7 @@ class TaskIO(object):
         response = http.post(
             self.agent_url,
             data=json.dumps(message),
+            auth=self._get_auth(),
             timeout=None,
             **req_extra_args)
 
@@ -354,6 +368,7 @@ class TaskIO(object):
         try:
             http.post(
                 self.agent_url,
+                auth=self._get_auth(),
                 data=_initial_input_streamer(),
                 **req_extra_args)
         except MesosHTTPException as e:
@@ -367,6 +382,7 @@ class TaskIO(object):
         # Begin streaming the input.
         http.post(
             self.agent_url,
+            auth=self._get_auth(),
             data=_input_streamer(),
             timeout=None,
             **req_extra_args)
@@ -488,10 +504,14 @@ if __name__ == '__main__':
   parser.add_argument('agent_url', type=str, help='The url of the agent to connect to.')
   parser.add_argument('container_id', type=str, help='The container id to connect to.')
   parser.add_argument('--user', type=str, help='The user to run the command as.')
+  parser.add_argument('--mesos_principal', type=str, help='The mesos principal.')
+  parser.add_argument('--mesos_secret_file', type=str, help='The file containing mesos secret.')
   args = parser.parse_args()
 
   t = TaskIO(agent_url=args.agent_url, parent_container_id=args.container_id,
-             tty=True, user=args.user, interactive=True, cmd="/bin/bash",
+             tty=True, user=args.user, mesos_principal=args.mesos_principal,
+             mesos_secret_file=args.mesos_secret_file,
+             interactive=True, cmd="/bin/bash",
              args=[])
   t.run()
 

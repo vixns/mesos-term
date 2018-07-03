@@ -18,6 +18,8 @@ export interface EnvVars {
   MESOS_STATE_CACHE_TIME: number;
   SESSION_SECRET: string;
   SUPER_ADMINS: string[];
+  MESOS_PRINCIPAL: string;
+  MESOS_SECRET_FILE: string;
 }
 
 const authorizations_enabled = (process.env['LDAP_URL']) ? true : false;
@@ -34,6 +36,8 @@ export const env: EnvVars = {
   JWT_SECRET: getOrExit('JWT_SECRET'),
   SUPER_ADMINS: getSuperAdmins(),
   MESOS_MASTER_URL: getOrExit('MESOS_MASTER_URL'),
+  MESOS_PRINCIPAL: process.env['MESOS_PRINCIPAL'],
+  MESOS_SECRET_FILE: process.env['MESOS_SECRET_FILE'],
   AUTHORIZATIONS_ENABLED: authorizations_enabled,
   MESOS_STATE_CACHE_TIME: parseFloat(getOrExit('MESOS_STATE_CACHE_TIME'))
 };

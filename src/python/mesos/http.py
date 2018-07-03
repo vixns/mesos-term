@@ -130,6 +130,7 @@ def request(method,
             timeout=DEFAULT_TIMEOUT,
             verify=None,
             toml_config=None,
+            auth=None,
             **kwargs):
     """Sends an HTTP request. If the server responds with a 401, ask the
     user for their credentials, and try request again (up to 3 times).
@@ -151,8 +152,6 @@ def request(method,
     :type kwargs: dict
     :rtype: Response
     """
-
-    auth = None
 
     response = _request(method, url, is_success, timeout,
                         auth=auth, verify=verify, toml_config=toml_config,
@@ -200,7 +199,7 @@ def get(url, **kwargs):
     return request('get', url, **kwargs)
 
 
-def post(url, data=None, json=None, **kwargs):
+def post(url, data=None, json=None, auth=None, **kwargs):
     """Sends a POST request.
 
     :param url: URL for the new Request object
@@ -215,7 +214,7 @@ def post(url, data=None, json=None, **kwargs):
     :rtype: Response
     """
 
-    return request('post', url, data=data, json=json, **kwargs)
+    return request('post', url, data=data, json=json, auth=auth, **kwargs)
 
 
 def put(url, data=None, **kwargs):
