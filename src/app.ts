@@ -55,7 +55,7 @@ TerminalController(app, env.AUTHORIZATIONS_ENABLED);
 
 // Start server
 
-const port: number = Number(process.env.PORT) || 3000;
+const port: number = 3000;
 const host: string = (os.platform() === 'win32')
   ? '127.0.0.1'
   : '0.0.0.0';
