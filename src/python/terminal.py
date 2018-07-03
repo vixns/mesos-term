@@ -511,7 +511,7 @@ if __name__ == '__main__':
   t = TaskIO(agent_url=args.agent_url, parent_container_id=args.container_id,
              tty=True, user=args.user, mesos_principal=args.mesos_principal,
              mesos_secret_file=args.mesos_secret_file,
-             interactive=True, cmd="/bin/bash",
+             interactive=True, cmd="/bin/sh",
              args=[])
   t.run()
 
