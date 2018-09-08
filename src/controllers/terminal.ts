@@ -97,6 +97,8 @@ function spawnTerminal(
     Path.resolve(__dirname, '..', 'python/terminal.py'),
     task.agent_url,
     task.container_id,
+    '--cmd',
+    env.COMMAND
   ];
 
   if (task.user) {
@@ -114,11 +116,6 @@ function spawnTerminal(
   const options: NodePty.IPtyForkOptions = {
     name: 'bash'
   };
-
-  if (req.query.rows && req.query.cols) {
-    options.rows = parseInt(req.query.rows);
-    options.cols = parseInt(req.query.cols);
-  }
 
   const term = NodePty.spawn(
     'python3',
@@ -141,14 +138,16 @@ function spawnTerminal(
 
 function checkAuthorizations(
   req: Express.Request,
-  task: Task) {
+  task: Task,
+  accessToken: string) {
 
   const userCN = req.user.cn;
   const userLdapGroups = req.user.memberOf;
-  const admins = task.admins;
+  const admins = env.ENABLE_PER_APP_ADMINS ? task.admins : [];
   const superAdmins = env.SUPER_ADMINS;
 
-  return Bluebird.join(
+  const authorizationsPromise =
+    Bluebird.all([
       Authorizations.CheckUserAuthorizations(
         userCN,
         userLdapGroups,
@@ -161,7 +160,31 @@ function checkAuthorizations(
         userLdapGroups,
         superAdmins
       )
-    );
+    ]);
+
+
+  const promises = [authorizationsPromise];
+  if (env.ENABLE_RIGHTS_DELEGATION && accessToken) {
+    const delegationPromise =
+      Authorizations.CheckDelegation(
+        userCN,
+        userLdapGroups,
+        task.task_id,
+        accessToken
+      );
+    promises.push(delegationPromise);
+  }
+
+  return Bluebird.any(promises)
+    .catch(Bluebird.AggregateError, function(errors: Bluebird.AggregateError) {
+      const reasons: string[] = [];
+      for (let i = 0; i < errors.length; ++i) {
+        reasons.push('"' + errors[i].message + '"');
+      }
+      const errorMessage = 'Reasons: [' + reasons.join(', ') + ']';
+      console.error(errorMessage);
+      return Bluebird.reject(new Error(errorMessage));
+    });
 }
 
 function tryRequestTerminal(
@@ -169,8 +192,10 @@ function tryRequestTerminal(
   res: Express.Response,
   task: Task) {
 
+  const accessToken = req.query.access_token;
+
   const spawnPromise = (env.AUTHORIZATIONS_ENABLED)
-    ? checkAuthorizations(req, task)
+    ? checkAuthorizations(req, task, accessToken)
         .then(() => spawnTerminal(req, res, task))
     : spawnTerminal(req, res, task);
 

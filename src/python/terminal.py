@@ -506,12 +506,13 @@ if __name__ == '__main__':
   parser.add_argument('--user', type=str, help='The user to run the command as.')
   parser.add_argument('--mesos_principal', type=str, help='The mesos principal.')
   parser.add_argument('--mesos_secret_file', type=str, help='The file containing mesos secret.')
+  parser.add_argument('--cmd', type=str, default="/bin/sh", help='The command to run in the container.')
   args = parser.parse_args()
 
   t = TaskIO(agent_url=args.agent_url, parent_container_id=args.container_id,
              tty=True, user=args.user, mesos_principal=args.mesos_principal,
              mesos_secret_file=args.mesos_secret_file,
-             interactive=True, cmd="/bin/sh",
+             interactive=True, cmd=args.cmd,
              args=[])
   t.run()
 

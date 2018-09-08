@@ -169,15 +169,15 @@ export function getTaskInfo(mesos_master_url: string, taskId: string): Bluebird<
 }
 
 function fetchMesosState(mesos_master_url: string) {
-  let agentOptions =  (env.CA_FILE) ? { ca: fs.readFileSync(env.CA_FILE) } : {};
+  const agentOptions =  (env.CA_FILE) ? { ca: fs.readFileSync(env.CA_FILE) } : {};
   let headers = {};
   if (env.MESOS_PRINCIPAL)  {
      headers = {
-         "Authorization" : "Basic " +
-           new Buffer(env.MESOS_PRINCIPAL + ":" +
+         'Authorization' : 'Basic ' +
+           new Buffer(env.MESOS_PRINCIPAL + ':' +
              fs.readFileSync(env.MESOS_SECRET_FILE).toString().trimRight())
-             .toString("base64")
-        }
+             .toString('base64')
+        };
    }
   return Request( { uri: `${mesos_master_url}/master/state`, json: true, headers: headers, agentOptions: agentOptions})
     .then(function(state: MesosState) {
