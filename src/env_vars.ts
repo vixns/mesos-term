@@ -31,6 +31,7 @@ export interface EnvVars {
   MESOS_PRINCIPAL: string;
   MESOS_SECRET_FILE: string;
   CA_FILE: string;
+  ALLOWED_TASK_ADMINS: string[];
   ENABLE_PER_APP_ADMINS?: boolean;
   ENABLE_RIGHTS_DELEGATION?: boolean;
   COMMAND: string;
@@ -45,6 +46,13 @@ function getSuperAdmins() {
     : [];
 }
 
+function parseAllowedTaskAdmins() {
+  const admins = process.env['MESOS_TERM_ALLOWED_TASK_ADMINS'];
+  return (admins)
+    ? admins.split(',')
+    : [];
+}
+
 export const env: EnvVars = {
   SESSION_SECRET: getOrExit('MESOS_TERM_SESSION_SECRET'),
   JWT_SECRET: getOrExit('MESOS_TERM_JWT_SECRET'),
@@ -52,6 +60,7 @@ export const env: EnvVars = {
   MESOS_PRINCIPAL: process.env['MESOS_TERM_MESOS_PRINCIPAL'],
   MESOS_SECRET_FILE: process.env['MESOS_TERM_MESOS_SECRET_FILE'],
   SUPER_ADMINS: getSuperAdmins(),
+  ALLOWED_TASK_ADMINS: parseAllowedTaskAdmins(),
   MESOS_MASTER_URL: getOrExit('MESOS_TERM_MESOS_MASTER_URL'),
   AUTHORIZATIONS_ENABLED: authorizations_enabled,
   MESOS_STATE_CACHE_TIME: parseFloat(getOrExit('MESOS_TERM_MESOS_STATE_CACHE_TIME')),
