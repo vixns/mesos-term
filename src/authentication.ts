@@ -3,18 +3,35 @@ import passport = require('passport');
 import LdapStrategy = require('passport-ldapauth');
 import basicAuth = require('basic-auth');
 import { Request } from './express_helpers';
+import fs = require("fs");
+import tls = require('tls');
 
 import { env } from './env_vars';
 
 export function BasicAuth(app: Express.Application) {
+  var tlsOptions:Object;
+
+  if ( env.LDAP_TLS ) {
+    tlsOptions = {
+      secureContext: tls.createSecureContext({
+        ca: fs.readFileSync(env.LDAP_CA_FILE),
+        cert: fs.readFileSync(env.LDAP_CERT_FILE),
+        key: fs.readFileSync(env.LDAP_KEY_FILE)
+      })
+    }
+  };
+
   const options = {
     server: {
       url: env.LDAP_URL,
       bindDN: env.LDAP_USER,
       bindCredentials: env.LDAP_PASSWORD,
       searchBase: env.LDAP_BASE_DN,
-      searchFilter: 'cn={{username}}',
-      searchAttributes: ['memberof', 'cn']
+      searchFilter: 'uid={{username}}',
+      searchAttributes: ['memberof', 'uid'],
+      tlsOptions: tlsOptions,
+      reconnect: true
+
     },
     credentialsLookup: basicAuth
   };

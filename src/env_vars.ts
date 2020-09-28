@@ -25,6 +25,10 @@ export interface EnvVars {
   LDAP_BASE_DN?: string;
   LDAP_USER?: string;
   LDAP_PASSWORD?: string;
+  LDAP_TLS?: boolean;
+  LDAP_CA_FILE?: string;
+  LDAP_CERT_FILE?: string;
+  LDAP_KEY_FILE?: string;
   MESOS_MASTER_URL: string;
   MESOS_STATE_CACHE_TIME: number;
   SESSION_SECRET: string;
@@ -94,6 +98,10 @@ if (authorizations_enabled) {
   env['LDAP_BASE_DN'] = getOrExit('MESOS_TERM_LDAP_BASE_DN');
   env['LDAP_USER'] = getOrExit('MESOS_TERM_LDAP_USER');
   env['LDAP_PASSWORD'] = getOrExit('MESOS_TERM_LDAP_PASSWORD');
+  env['LDAP_TLS'] = process.env['MESOS_TERM_LDAP_TLS'] === 'true';
+  env['LDAP_CA_FILE'] = getOrElse('MESOS_TERM_LDAP_CA_FILE', '');
+  env['LDAP_CERT_FILE'] = getOrElse('MESOS_TERM_LDAP_CERT_FILE', '');
+  env['LDAP_KEY_FILE'] = getOrElse('MESOS_TERM_LDAP_KEY_FILE', '');
   env['ENABLE_PER_APP_ADMINS'] = process.env['MESOS_TERM_ENABLE_PER_APP_ADMINS'] === 'true';
   env['ENABLE_RIGHTS_DELEGATION'] = process.env['MESOS_TERM_ENABLE_RIGHTS_DELEGATION'] === 'true';
 
