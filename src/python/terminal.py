@@ -10,6 +10,7 @@ import uuid
 import urllib.parse
 import re
 from requests.auth import HTTPBasicAuth
+import shlex
 
 from functools import partial
 from queue import Queue
@@ -522,6 +523,7 @@ if __name__ == '__main__':
   parser.add_argument('container_id', type=str, help='The container id to connect to.')
   parser.add_argument('--user', type=str, help='The user to run the command as.')
   parser.add_argument('--cmd', type=str, default="/bin/sh", help='The command to run in the container.')
+  parser.add_argument('--args', type=str, default="", help='The command args to run in the container.')
   parser.add_argument('--env', type=str, help='List of environment variable to enrich the shell with (NAME=value, colon separated).')
   parser.add_argument('--parent', type=str, help='The parent container id if the container id to connect to is nested (task groups)')
   parser.add_argument('--http_principal', type=str, help='The principal to connect to API v1 of the Mesos agent.')
@@ -532,6 +534,6 @@ if __name__ == '__main__':
              parent_container_id=args.parent,
              tty=True, user=args.user, interactive=True, cmd=args.cmd,
              env=args.env, http_principal=args.http_principal,
-             http_password=args.http_password, args=[])
+             http_password=args.http_password, args=shlex.split(args.args))
   t.run()
 

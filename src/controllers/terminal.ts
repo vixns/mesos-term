@@ -99,7 +99,9 @@ function spawnTerminal(
     task.agent_url,
     task.container_id,
     '--cmd',
-    env.COMMAND
+    env.COMMAND,
+    '--args',
+    env.ARGS
   ];
 
   if (task.user) {
