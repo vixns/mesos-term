@@ -9,7 +9,6 @@ import { env } from '../env_vars';
 import { getLogger } from '../express_helpers';
 import { TaskNotFoundError, getRunningTaskInfo, TaskInfo, TaskNotRunningError, MesosAgentNotFoundError } from '../mesos';
 import Authorizations = require('../authorizations');
-import { Request } from '../express_helpers';
 
 const BEARER_KEY = 'token';
 
@@ -29,12 +28,12 @@ declare global {
   }
 }
 
-async function VerifyBearer(req: Request) {
+async function VerifyBearer(req: Express.Request) {
   if (!(BEARER_KEY in req.query)) {
     throw new Error('Unauthorized due to missing bearer.');
   }
 
-  const decoded = Jwt.verify(req.query[BEARER_KEY], env.JWT_SECRET) as any;
+  const decoded = Jwt.verify(req.query[BEARER_KEY].toString(), env.JWT_SECRET) as any;
   const pid = decoded.pid;
 
   if (!pid) {
@@ -61,7 +60,7 @@ async function VerifyBearer(req: Request) {
 }
 
 async function TerminalBearer(
-  req: Request,
+  req: Express.Request,
   res: Express.Response,
   next: Express.NextFunction) {
 
@@ -78,7 +77,7 @@ async function TerminalBearer(
 
 export async function WsTerminalBearer(
   ws: Ws,
-  req: Request,
+  req: Express.Request,
   next: Express.NextFunction) {
 
   try {
@@ -91,7 +90,7 @@ export async function WsTerminalBearer(
 }
 
 function spawnTerminal(
-  req: Request,
+  req: Express.Request,
   task: TaskInfo) {
 
   const params = [
@@ -150,19 +149,19 @@ function spawnTerminal(
 }
 
 async function tryRequestTerminal(
-  req: Request,
+  req: Express.Request,
   res: Express.Response,
   task: TaskInfo) {
 
-  if (env.AUTHORIZATIONS_ENABLED) {
-    await Authorizations.CheckTaskAuthorization(req, task, req.query.access_token);
+  if (env.AUTHORIZATIONS_ENABLED && req.query.access_token != undefined) {
+    await Authorizations.CheckTaskAuthorization(req, task, req.query.access_token.toString());
   }
   const pid = await spawnTerminal(req, task);
   return Jwt.sign({ pid }, env.JWT_SECRET, { expiresIn: 60 * 60 });
 }
 
 async function createTerminal(
-  req: Request,
+  req: Express.Request,
   res: Express.Response) {
 
   const taskId = req.params.task_id;
@@ -211,16 +210,16 @@ async function createTerminal(
   }
 }
 
-export function resizeTerminal(req: Request, res: Express.Response) {
+export function resizeTerminal(req: Express.Request, res: Express.Response) {
   const term = req.term.terminal;
-  const cols = parseInt(req.query.cols);
-  const rows = parseInt(req.query.rows);
+  const cols = parseInt(req.query.cols.toString());
+  const rows = parseInt(req.query.rows.toString());
 
   term.resize(cols, rows);
   res.end();
 }
 
-export function connectTerminal(ws: Ws, req: Request) {
+export function connectTerminal(ws: Ws, req: Express.Request) {
   const term = req.term.terminal;
   const logs = req.term.logs;
 

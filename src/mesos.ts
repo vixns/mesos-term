@@ -76,6 +76,22 @@ export interface TaskInfo extends TaskContainer {
 
 const mesosStateCache = cacheMesosState(env.MESOS_MASTER_URL, env.MESOS_STATE_CACHE_TIME);
 
+async function getAxiosConfig(axiosConfig: AxiosRequestConfig = {}): Promise<AxiosRequestConfig> {
+  if (env.CA_FILE) {
+    const httpsAgent = new https.Agent({
+      ca: await Fs.readFile(env.CA_FILE),
+    });
+    axiosConfig['httpsAgent'] = httpsAgent;
+  }
+  if (env.MESOS_AGENT_CREDENTIALS) {
+     axiosConfig['auth'] = {
+        username: env.MESOS_AGENT_CREDENTIALS.principal,
+        password: env.MESOS_AGENT_CREDENTIALS.password
+    };
+  }
+  return axiosConfig;
+}
+
 function fromMesosLabels(mesosLabels: MesosLabel[]): Labels {
   if (!mesosLabels) {
     return {};
@@ -257,14 +273,7 @@ function cacheMesosState(mesosMasterURL: string, refreshSeconds: number) {
   let cache: MesosState | undefined;
 
   async function refreshCache() {
-    const axiosConfig: AxiosRequestConfig = {};
-    if (env.CA_FILE) {
-      const httpsAgent = new https.Agent({
-        ca: await Fs.readFile(env.CA_FILE),
-      });
-      axiosConfig['httpsAgent'] = httpsAgent;
-    }
-    const res = await Axios.get<MesosState>(`${mesosMasterURL}/master/state`, axiosConfig);
+    const res = await Axios.get<MesosState>(`${mesosMasterURL}/master/state`, await getAxiosConfig());
     cache = res.data;
     return cache;
   }
@@ -327,7 +336,7 @@ export function findTaskInSlaveState(state: MesosSlaveState, taskID: string) {
 }
 
 export async function getMesosSlaveState(mesosSlaveURL: string) {
-  const res = await Axios.get<MesosSlaveState>(`${mesosSlaveURL}/state`);
+  const res = await Axios.get<MesosSlaveState>(`${mesosSlaveURL}/state`, await getAxiosConfig());
   return res.data;
 }
 
@@ -346,9 +355,10 @@ export async function browseSandbox(
   relativePath: string) {
   const basePath = `${workDir}/slaves/${slaveID}/frameworks/${frameworkID}/executors/${executorID}/runs/${containerID}`;
   const fullPath = encodeURIComponent(`${basePath}${relativePath}`);
-  const res = await Axios.get<FileDescription[]>(`${mesosSlaveURL}/files/browse?path=${fullPath}`, {
+  const res = await Axios.get<FileDescription[]>(`${mesosSlaveURL}/files/browse?path=${fullPath}`,
+  await getAxiosConfig({
     validateStatus: (code: number) => code === 404 || code === 200,
-  });
+  }));
 
   if (res.status === 404) {
     throw new FileNotFoundError(relativePath);
@@ -370,9 +380,10 @@ export async function readSandboxFile(
   relativePath: string, offset: number, size: number) {
   const basePath = `${workDir}/slaves/${slaveID}/frameworks/${frameworkID}/executors/${executorID}/runs/${containerID}`;
   const fullPath = encodeURIComponent(`${basePath}${relativePath}`);
-  const res = await Axios.get<FileData>(`${mesosSlaveURL}/files/read?path=${fullPath}&offset=${offset}&length=${size}`, {
+  const res = await Axios.get<FileData>(`${mesosSlaveURL}/files/read?path=${fullPath}&offset=${offset}&length=${size}`,
+  await getAxiosConfig({
     validateStatus: (code: number) => code === 404 || code === 200,
-  });
+  }));
 
   if (res.status === 404) {
     throw new FileNotFoundError(relativePath);
@@ -396,10 +407,11 @@ export async function downloadSandboxFileAsStream(
   relativePath: string, res: any) {
   const basePath = `${workDir}/slaves/${slaveID}/frameworks/${frameworkID}/executors/${executorID}/runs/${containerID}`;
   const fullPath = encodeURIComponent(`${basePath}${relativePath}`);
-  const fileContentRes = await Axios.get(`${mesosSlaveURL}/files/download?path=${fullPath}`, {
+  const fileContentRes = await Axios.get(`${mesosSlaveURL}/files/download?path=${fullPath}`,
+  await getAxiosConfig({
     validateStatus: (code: number) => code === 400 || code === 200,
     responseType: 'stream',
-  });
+  }));
   if (fileContentRes.status === 400 && (fileContentRes as any).data === 'Cannot download a directory.\n') {
     throw new DownloadDirectoryError();
   }
@@ -423,10 +435,11 @@ export async function downloadSandboxFileAsNodeArray(
   relativePath: string) {
   const basePath = `${workDir}/slaves/${slaveID}/frameworks/${frameworkID}/executors/${executorID}/runs/${containerID}`;
   const fullPath = encodeURIComponent(`${basePath}${relativePath}`);
-  const fileContentRes = await Axios.get(`${mesosSlaveURL}/files/download?path=${fullPath}`, {
+  const fileContentRes = await Axios.get(`${mesosSlaveURL}/files/download?path=${fullPath}`,
+  await getAxiosConfig({
     validateStatus: (code: number) => code === 400 || code === 200,
     responseType: 'arraybuffer',
-  });
+  }));
   if (fileContentRes.status === 400 && (fileContentRes as any).data === 'Cannot download a directory.\n') {
     throw new DownloadDirectoryError();
   }

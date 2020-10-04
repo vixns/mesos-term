@@ -2,9 +2,10 @@ import Express = require('express');
 import ExpressWs = require('express-ws');
 import os = require('os');
 import path = require('path');
-import session = require('express-session');
+const session = require('express-session');
+import { SessionOptions } from 'express-session';
 import BodyParser = require('body-parser');
-import Compression = require('compression');
+const Compression = require('compression');
 
 import { env } from './env_vars';
 
@@ -15,13 +16,13 @@ import config from './controllers/config';
 import sandbox from './controllers/sandbox';
 
 import { setup, SuperAdminsOnly } from './express_helpers';
-import { BasicAuth } from './authentication';
+import authentication from './authentication';
 import { AuthenticatedLogger, AnonymousLogger } from './logger';
 
 const app = Express();
 const expressWs = ExpressWs(app);
 
-const sessionOptions: session.SessionOptions = {
+const sessionOptions: SessionOptions = {
   name: 'mesos-term',
   secret: env.SESSION_SECRET,
   resave: false,
@@ -41,7 +42,7 @@ app.use(Compression());
 if (env.AUTHORIZATIONS_ENABLED) {
   console.log('Authorizations are enabled.');
   setup(app, new AuthenticatedLogger());
-  BasicAuth(app);
+  authentication(app);
 }
 else {
   console.log('Authorizations are disabled.');
@@ -72,7 +73,7 @@ app.get('*', (req, res) => {
 const port: number = Number(process.env.PORT) || 3000;
 const host: string = (os.platform() === 'win32')
   ? '127.0.0.1'
-  : process.env.HOST || '0.0.0.0';
+  : '0.0.0.0';
 
 app.listen(port, host, function () {
   console.log('App listening to http://' + host + ':' + port);

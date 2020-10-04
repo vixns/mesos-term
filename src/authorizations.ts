@@ -1,6 +1,5 @@
 import * as Jwt from 'jsonwebtoken';
 import { TaskInfo } from './mesos';
-import { Request } from './express_helpers';
 import { env } from './env_vars';
 
 export class UnauthorizedAccessError extends Error {
@@ -51,13 +50,12 @@ export function FilterTaskAdmins(
 }
 
 export async function CheckUserAuthorizations(
-  userCN: string,
-  userLdapGroups: string[],
+  userId: string,
+  userGroups: string[],
   admins_constraints: string[][],
   superAdmins: string[]): Promise<void> {
 
-  const userGroups = extractCN(userLdapGroups);
-  const userAndGroups = [userCN].concat(userGroups);
+  const userAndGroups = (env.LDAP_ENABLED) ? [userId].concat(extractCN(userGroups)) : [userId].concat(userGroups);
   const isUserSuperAdmin = (intersection(userAndGroups, superAdmins).length > 0);
   const admins_constraints_lower = admins_constraints.map(array => array.map(el => el.toLowerCase()));
 
@@ -69,7 +67,7 @@ export async function CheckUserAuthorizations(
     throw new UnauthorizedAccessError('Only super admins can connect to this container');
   }
 
-  console.log(`User ${userCN} is part of following entities: ${userAndGroups}`);
+  console.log(`User ${userId} is part of following entities: ${userAndGroups}`);
   console.log('Requirement to login to this app are: ' + admins_constraints);
 
   if (!admins_constraints_lower.every(matches, userAndGroups)) {
@@ -83,12 +81,11 @@ function matches(element: string[], index: number, array: string[][]) {
 
 export async function CheckRootContainer(
   taskUser: string,
-  userCN: string,
-  userLdapGroups: string[],
+  userId: string,
+  userGroups: string[],
   superAdmins: string[]) {
 
-  const userGroups = extractCN(userLdapGroups);
-  const userAndGroups = [userCN].concat(userGroups);
+  const userAndGroups = (env.LDAP_ENABLED) ? [userId].concat(extractCN(userGroups)) : [userId].concat(userGroups);
   const isUserAdmin = (intersection(userAndGroups, superAdmins).length > 0);
 
   if (!(isUserAdmin || (taskUser && taskUser !== 'root'))) {
@@ -97,16 +94,15 @@ export async function CheckRootContainer(
 }
 
 export async function CheckDelegation(
-  userCN: string,
-  userLdapGroups: string[],
+  userId: string,
+  userGroups: string[],
   taskId: string,
   delegationToken: string,
   jwt_secret: string) {
 
   const payload = Jwt.verify(delegationToken, jwt_secret) as { task_id: string, delegate_to: string[] };
 
-  const userGroups = extractCN(userLdapGroups);
-  const userAndGroups = [userCN].concat(userGroups);
+  const userAndGroups = (env.LDAP_ENABLED) ? [userId].concat(extractCN(userGroups)) : [userId].concat(userGroups);
   const isUserDelegated = (intersection(userAndGroups, payload.delegate_to).length > 0);
 
   if (taskId != payload.task_id || !isUserDelegated) {
@@ -115,19 +111,19 @@ export async function CheckDelegation(
 }
 
 export function isSuperAdmin(
-  userCN: string,
-  userLdapGroups: string[],
+  userId: string,
+  userGroups: string[],
   superAdmins: string[]): boolean {
-  const userGroups = extractCN(userLdapGroups);
-  return intersection([userCN].concat(userGroups), superAdmins).length > 0;
+  const userAndGroups = (env.LDAP_ENABLED) ? [userId].concat(extractCN(userGroups)) : [userId].concat(userGroups);
+  return intersection(userAndGroups, superAdmins).length > 0;
 }
 
 export async function CheckTaskAuthorization(
-  req: Request,
+  req: Express.Request,
   task: TaskInfo,
   accessToken: string) {
 
-  const userCN = req.user.cn;
+  const userId = req.user.uid;
   const userLdapGroups = req.user.memberOf;
   const admins_constraints = FilterTaskAdmins(
     env.ENABLE_PER_APP_ADMINS,
@@ -139,7 +135,7 @@ export async function CheckTaskAuthorization(
   if (accessToken && env.ENABLE_RIGHTS_DELEGATION) {
     try {
       await CheckDelegation(
-        userCN,
+        userId,
         userLdapGroups,
         task.task_id,
         accessToken,
@@ -155,14 +151,14 @@ export async function CheckTaskAuthorization(
 
   await Promise.all([
     CheckUserAuthorizations(
-      userCN,
+      userId,
       userLdapGroups,
       admins_constraints,
       superAdmins
     ),
     CheckRootContainer(
       task.user,
-      userCN,
+      userId,
       userLdapGroups,
       superAdmins
     )

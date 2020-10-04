@@ -6,14 +6,19 @@ import { isSuperAdmin } from './authorizations';
 const ENV_VARS_KEY = 'env_vars';
 const LOGGER_KEY = 'logger';
 
-export interface User {
-  cn: string;
-  memberOf: string[];
+declare global {
+  namespace Express {
+    interface User {
+      uid: string;
+      memberOf?: string[];
+      groups?: string[];
+    }
+    interface Request {
+      user?: User;
+    }
+  }
 }
 
-export interface Request extends Express.Request {
-  user: User;
-}
 
 export function setup(app: Express.Application, logger: Logger) {
   app.set(ENV_VARS_KEY, env);
@@ -29,16 +34,14 @@ export function getLogger(req: Express.Request): Logger {
 }
 
 export function SuperAdminsOnly(
-  req: Request,
+  req: Express.Request,
   res: Express.Response,
   next: Express.NextFunction) {
-
-  const user = req.user as User;
-
-  if (user.cn && user.memberOf && isSuperAdmin(
-    user.cn, user.memberOf, env.SUPER_ADMINS)) {
+  const groups = (req.user.memberOf) ? req.user.memberOf : req.user.groups;
+  if (req.user.uid && groups && isSuperAdmin(
+    req.user.uid, groups, env.SUPER_ADMINS)) {
     next();
     return;
   }
-  res.status(403).send();
+  res.sendStatus(403);
 }

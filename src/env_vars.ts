@@ -19,8 +19,8 @@ function getOrElse<T extends string | number>(varName: string, defaultValue: T):
 
 export interface EnvVars {
   AUTHORIZATIONS_ENABLED: boolean;
-
   JWT_SECRET: string;
+  LDAP_ENABLED: boolean;
   LDAP_URL?: string;
   LDAP_BASE_DN?: string;
   LDAP_USER?: string;
@@ -48,9 +48,21 @@ export interface EnvVars {
   ARGS: string;
   CA_FILE?: string;
   MESOS_AGENT_CREDENTIALS?: { principal: string, password: string };
+  OIDC_ENABLED: boolean;
+  OIDC_AUTH_URL?: string;
+  OIDC_ISSUER?: string;
+  OIDC_TOKEN_URL?: string;
+  OIDC_USERINFO_URL?: string;
+  OIDC_CALLBACK_URL?: string;
+  OIDC_CLIENT_ID?: string;
+  OIDC_CLIENT_SECRET?: string;
+  OIDC_SCOPE?: string;
+  OIDC_UID_KEY?: string;
+  OIDC_GROUPS_KEY?: string;
 }
 
-const authorizations_enabled = (process.env['MESOS_TERM_LDAP_URL']) ? true : false;
+const ldap_enabled = (process.env['MESOS_TERM_LDAP_URL']) ? true : false;
+const oidc_enabled = (process.env['MESOS_TERM_OIDC_AUTH_URL']) ? true : false;
 
 function getSuperAdmins() {
   const adminsStr = process.env['MESOS_TERM_SUPER_ADMINS'];
@@ -73,7 +85,9 @@ export const env: EnvVars = {
   SUPER_ADMINS: getSuperAdmins(),
   ALLOWED_TASK_ADMINS: parseAllowedTaskAdmins(),
   MESOS_MASTER_URL: getOrExit('MESOS_TERM_MESOS_MASTER_URL'),
-  AUTHORIZATIONS_ENABLED: authorizations_enabled,
+  LDAP_ENABLED: ldap_enabled,
+  OIDC_ENABLED: oidc_enabled,
+  AUTHORIZATIONS_ENABLED: (ldap_enabled || oidc_enabled),
   MESOS_STATE_CACHE_TIME: parseFloat(getOrExit('MESOS_TERM_MESOS_STATE_CACHE_TIME')),
   EXTRA_ENV: getOrElse('MESOS_TERM_ENVIRONMENT', ''),
   COMMAND: getOrElse('MESOS_TERM_COMMAND', '/bin/sh'),
@@ -93,7 +107,16 @@ if ('MESOS_TERM_MESOS_AGENT_PRINCIPAL' in process.env && 'MESOS_TERM_MESOS_AGENT
   };
 }
 
-if (authorizations_enabled) {
+if (ldap_enabled || oidc_enabled) {
+  env['ENABLE_PER_APP_ADMINS'] = process.env['MESOS_TERM_ENABLE_PER_APP_ADMINS'] === 'true';
+  env['ENABLE_RIGHTS_DELEGATION'] = process.env['MESOS_TERM_ENABLE_RIGHTS_DELEGATION'] === 'true';
+
+  env['AUTHORIZE_ALL_SANDBOXES'] =
+    'MESOS_TERM_AUTHORIZE_ALL_SANDBOXES' in process.env &&
+    process.env['MESOS_TERM_AUTHORIZE_ALL_SANDBOXES'] === 'true';
+}
+
+if (ldap_enabled) {
   env['LDAP_URL'] = getOrExit('MESOS_TERM_LDAP_URL');
   env['LDAP_BASE_DN'] = getOrExit('MESOS_TERM_LDAP_BASE_DN');
   env['LDAP_USER'] = getOrExit('MESOS_TERM_LDAP_USER');
@@ -102,10 +125,17 @@ if (authorizations_enabled) {
   env['LDAP_CA_FILE'] = getOrElse('MESOS_TERM_LDAP_CA_FILE', '');
   env['LDAP_CERT_FILE'] = getOrElse('MESOS_TERM_LDAP_CERT_FILE', '');
   env['LDAP_KEY_FILE'] = getOrElse('MESOS_TERM_LDAP_KEY_FILE', '');
-  env['ENABLE_PER_APP_ADMINS'] = process.env['MESOS_TERM_ENABLE_PER_APP_ADMINS'] === 'true';
-  env['ENABLE_RIGHTS_DELEGATION'] = process.env['MESOS_TERM_ENABLE_RIGHTS_DELEGATION'] === 'true';
+}
 
-  env['AUTHORIZE_ALL_SANDBOXES'] =
-    'MESOS_TERM_AUTHORIZE_ALL_SANDBOXES' in process.env &&
-    process.env['MESOS_TERM_AUTHORIZE_ALL_SANDBOXES'] === 'true';
+if (oidc_enabled) {
+  env['OIDC_AUTH_URL'] = getOrExit('MESOS_TERM_OIDC_AUTH_URL');
+  env['OIDC_ISSUER'] = getOrExit('MESOS_TERM_OIDC_ISSUER');
+  env['OIDC_TOKEN_URL'] = getOrExit('MESOS_TERM_OIDC_TOKEN_URL');
+  env['OIDC_CALLBACK_URL'] = getOrExit('MESOS_TERM_OIDC_CALLBACK_URL');
+  env['OIDC_USERINFO_URL'] = getOrExit('MESOS_TERM_OIDC_USERINFO_URL');
+  env['OIDC_CLIENT_ID'] = getOrExit('MESOS_TERM_OIDC_CLIENT_ID');
+  env['OIDC_CLIENT_SECRET'] = getOrExit('MESOS_TERM_OIDC_CLIENT_SECRET');
+  env['OIDC_SCOPE'] = getOrElse('MESOS_TERM_OIDC_SCOPE', 'openid');
+  env['OIDC_UID_KEY'] = getOrElse('MESOS_TERM_OIDC_UID_KEY', 'id');
+  env['OIDC_GROUPS_KEY'] = getOrElse('MESOS_TERM_OIDC_GROUPS_KEY', 'groups');
 }
